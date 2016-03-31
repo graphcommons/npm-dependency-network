@@ -55,7 +55,8 @@ def main(access_token, package_name, max_depth):
         signals.append(Signal(
             action="node_create",
             name=node,
-            type="Package"
+            type="Package",
+            reference="https://www.npmjs.com/package/%s" % node
         ))
 
     for source, target in graph.edges():
