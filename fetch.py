@@ -14,28 +14,49 @@ def import_package_dependencies(graph, package_name, max_depth=3, depth=0):
     if package_name in fetched_packages:
         return
 
+    if depth > max_depth:
+        return
+
     fetched_packages.add(package_name)
 
     url = 'https://www.npmjs.com/package/%s' % package_name
     response = requests.get(url, verify=False)
     doc = fromstring(response.content)
 
+    graph.add_node(package_name, {
+        'type': 'PACKAGE'
+    })
+
     for h3 in doc.cssselect('h3'):
         content = h3.text_content()
 
-        if not content.startswith('Dependencies'):
-            continue
+        if content.strip().startswith('Collaborators'):
 
-        for dependency in h3.getnext().cssselect('a'):
-            dependency_name = dependency.text_content()
+            for collaborator in h3.getnext().cssselect('a'):
 
-            print '-' * depth * 2, dependency_name
+                collaborator_name = collaborator.attrib['title']
 
-            graph.add_edge(package_name, dependency_name, {
-                'type': 'depends'
-            })
+                graph.add_node(collaborator_name, {
+                    'type': 'CONTRIBUTOR'
+                })
 
-            if depth <= max_depth:
+                graph.add_edge(collaborator_name, package_name, {
+                    'type': 'CONTRIBUTED'
+                })
+
+        if content.startswith('Dependencies'):
+            for dependency in h3.getnext().cssselect('a'):
+                dependency_name = dependency.text_content()
+
+                print '-' * depth * 2, dependency_name
+
+                graph.add_node(dependency_name, {
+                    'type': 'PACKAGE'
+                })
+
+                graph.add_edge(package_name, dependency_name, {
+                    'type': 'DEPENDS'
+                })
 
                 import_package_dependencies(
                     graph,
@@ -51,22 +72,29 @@ def main(access_token, package_name, max_depth):
 
     signals = []
 
-    for node in graph.nodes():
+    for (node, data) in graph.nodes(data=True):
+
+        if data['type'] == 'PACKAGE':
+            reference = "https://www.npmjs.com/package/%s" % node
+        else:
+            reference = 'https://www.npmjs.com/%s' % node
+
         signals.append(Signal(
             action="node_create",
             name=node,
-            type="Package",
-            reference="https://www.npmjs.com/package/%s" % node
+            type=data['type'],
+            reference=reference
         ))
 
-    for source, target in graph.edges():
+    for source, target, data in graph.edges(data=True):
+
         signals.append(Signal(
             action="edge_create",
             from_name=source,
-            from_type="Package",
+            from_type=graph.node[source]['type'],
             to_name=target,
-            to_type="Package",
-            name="DEPENDS",
+            to_type=graph.node[target]['type'],
+            name=data['type'],
             weight=1
         ))
 
