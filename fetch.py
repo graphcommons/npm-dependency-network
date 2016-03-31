@@ -77,7 +77,7 @@ def main(access_token, package_name, max_depth):
         if data['type'] == 'PACKAGE':
             reference = "https://www.npmjs.com/package/%s" % node
         else:
-            reference = 'https://www.npmjs.com/%s' % node
+            reference = 'https://www.npmjs.com/~%s' % node
 
         signals.append(Signal(
             action="node_create",
