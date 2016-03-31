@@ -1,5 +1,4 @@
-NPM Dependency Network
-######################
+## NPM Dependency Network
 
 A python script that fetches an npm module and it's dependencies. 
 Creates a graph on graphcommons.com and returns the url of created graph.
